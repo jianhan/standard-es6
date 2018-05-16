@@ -63,5 +63,51 @@ var pipe = (function () {
 }());
 var double = n => n * 2;
 var pow = n => n * n;
-var reverseInt = n => n.toString().split("").reverse().join("")
+var reverseInt = n => n
+    .toString()
+    .split("")
+    .reverse()
+    .join("")
 pipe(3).double.pow.reverseInt.get; // 63
+
+// 上面代码设置 Proxy 以后，达到了将函数名链式使用的效果 下面的例子则是利用 get 拦截，实现一个生成各种DOM节点的通用函数 dom
+const dom = new Proxy({}, {
+    get(target, property) {
+        return function (attrs = {}, ...children) {
+            const el = document.createElement(property);
+            for (let prop of Object.keys(attrs)) {
+                el.setAttribute(prop, attrs[prop]);
+            }
+            for (let child of children) {
+                if (typeof child === 'string') {
+                    child = document.createTextNode(child);
+                }
+                el.appendChild(child);
+            }
+            return el;
+        }
+    }
+});
+const el = dom.div({}, 'Hello, my name is ', dom.a({
+    href: '//example.com'
+}, 'Mark'), '. I like:', dom.ul({}, dom.li({}, 'The web'), dom.li({}, 'Food'), dom.li({}, '…actually that\'s it')));
+document
+    .body
+    .appendChild(el);
+// 如果一个属性不可配置（ configurable） 和不可写（ writable） ，则该属性不能被代 理，通过 Proxy 对象访问该属性会报错
+
+const target = Object.defineProperties({}, {
+    foo: {
+        value: 123,
+        writable: false,
+        configurable: false
+    }
+});
+const handler = {
+    get(target, propKey) {
+        return 'abc';
+    }
+};
+const proxy = new Proxy(target, handler);
+proxy.foo
+// TypeError: Invariant check failed
